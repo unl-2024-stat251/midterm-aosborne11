@@ -1,6 +1,6 @@
 ---
 title: 251 Midterm Exam
-author: Firstname Lastname
+author: Adam Osborne
 date: '2024-03-07'
 execute:
   error: false
@@ -17,12 +17,15 @@ The raw CSV data is available at https://raw.githubusercontent.com/rfordatascien
 
 ```{r r-setup}
 # load any R packages you use in this chunk
-
+library(dplyr)
+library(stringr)
+library(ggplot2)
 ```
 
 ```{python py-setup}
 # load any python packages you use in this chunk
-
+import pandas as pd
+import matplotlib.pyplot as plt
 ```
 
 # Data Input - Polling Places
@@ -42,13 +45,13 @@ election_date,state,county_name,jurisdiction,jurisdiction_type,precinct_id,preci
 ```
 
 1.  What is the file delimiter? (1 pt)    
-<Delete this and replace with your answer>
+A comma ,
 
 2.  What is the header? (1 pt)    
 <Delete this and replace with your answer>
 
 3.  How many columns will the data have when it is read in using R or Python? (1 pt)    
-<Delete this and replace with your answer>
+15
 
 4.  How is the data stored differently in the address field compared to the name field (1 pt), and why is this different handling necessary (1 pt)?    
 <Delete this and replace with your answer>
@@ -60,11 +63,11 @@ Read in the data in R (5 pts) and in python (5 pts).
 Make sure to load any packages which are necessary to run your code in the setup chunks at the beginning of the document.
 
 ```{r r-read-data}
-
+data <- read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-16/polling_places.csv")
 ```
 
 ```{python py-read-data}
-
+data = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-16/polling_places.csv", low_memory=False)
 ```
 
 ## Summarize the Data
@@ -76,11 +79,16 @@ Language used: <Fill in>
 Make sure your terms match the language you're using and the code you provided above. If you use code to get these values (which is probably a good idea), please use the code chunks provided here:
 
 ```{r r-data-summary-code}
+summary(data)
 
 ```
 
 ```{python py-data-summary-code}
+data.info()
 
+data.dtypes
+
+data.nunique(axis=0)
 ```
 
 
@@ -88,21 +96,21 @@ When computing the number of unique values, exclude missing values.
 
 | Column Name       | Data Type (5 pts) | # missing values (5 pts) | # unique values (5 pts) |
 |-------------|----------|-------------------------|-------------------------|
-| election_date     |           |                          |                                     |
-| state             |           |                          |                                     |
-| county_name       |           |                          |                                     |
-| jurisdiction      |           |                          |                                     |
-| jurisdiction_type |           |                          |                                     |
-| precinct_id       |           |                          |                                     |
-| precinct_name     |           |                          |                                     |
-| polling_place_id  |           |                          |                                     |
-| location_type     |           |                          |                                     |
-| name              |           |                          |                                     |
-| address           |           |                          |                                     |
-| notes             |           |                          |                                     |
-| source            |           |                          |                                     |
-| source_date       |           |                          |                                     |
-| source_notes      |           |                          |                                     |
+| election_date     |Character  | 0                         | 7                              |
+| state             |Character  | 0                         | 39                             |
+| county_name       |Character  | 114578                    | 1880                           |
+| jurisdiction      |Character  | 103609                    | 9206                           |
+| jurisdiction_type |Character  | 60                        | 7                              |
+| precinct_id       |Character  | 148844                    | 50287                          |
+| precinct_name     |Character  | 96870                     | 110887                         |
+| polling_place_id  |Character  | 408188                    | 11145                          |
+| location_type     |Character  | 192840                    | 6                              |
+| name              |Character  | 75                        | 105985                         |
+| address           |Character  | 3006                      | 151319                         |
+| notes             |Character  | 416322                    | 9614                           |
+| source            |Character  | 0                         | 4                              |
+| source_date       |Character  | 0                         | 36                             |
+| source_notes      |Character  | 425363                    | 4                              |
 
 : Summary of Polling Data
 
@@ -111,7 +119,7 @@ When computing the number of unique values, exclude missing values.
 
 For this part of the exam, you'll use your student ID to get the state you'll be working with. 
 ```{r student-id-state-assign}
-my_nuid <- 96582245 # Change this value to your NUID
+my_nuid <- 63083618 # Change this value to your NUID
 state_ids <- readRDS("state-ids.RDS")
 my_state <- state_ids$state[my_nuid%%37]
 print(my_state)
@@ -130,30 +138,47 @@ Fill in the following table when you are finished.
 Add new rows by moving to a new line, and separate each cell in the table with ` | ` (spaces matter). `|` is on the key above the enter key and shares a key with `\` (backslash). You will need to hold shift down.
 
 Step # | Verb | Arguments
---- | --- | ---
- 1 | ... | ... <!-- replace this line -->
+--- | --    - | ---
+ 1 | filter   | data$state
+ 2 | filter   | NJ_data$name
+ 3 | filter   | NJ_data$name
+ 4 | gsub     | NJ_data$precinct_name
+ 5 | group_by | NJ_data$county_name
+ 6 | count    | NJ_data$election_date
 
-
-## Code
+## Code 
 (10 pts)
-
 Write code in R or python to execute the steps you outlined above.
 
+```{r}
+NJ_data <-data %>% filter(state== 'NJ')
+
+NJ_data <- NJ_data %>% filter(name != 'New Jersey')
+
+NJ_data <- NJ_data %>% filter(name != "DO NOT USE")
+
+NJ_data$county_name <- gsub("\\-.*",'', NJ_data$precinct_name) 
+
+#NJ_data <- NJ_data %>% group_by(election_date) #%>% group_by(election_date) %>% mutate(ppc=n())
+chart_data <- NJ_data %>% group_by(county_name) %>% count(election_date)
+
+
+```
 ## Chart Description
 (7 pts)
 
 Use the grammar of graphics to identify the components of the chart here, which provides the data for Wisconsin.
 ![Wisconsin counties where the number of polling places changed, 2012-2020](wisconsin-example.jpg){width="50%"}
 
-- geom: 
+- geom: line
 - aesthetics: (list at least 3)
 
-  - 
-  - 
-  - 
-- coordinate system: 
-- y axis scale: 
-- x axis scale: 
+  - title
+  - y label
+  - x label
+- coordinate system: cartesian
+- y axis scale: exponential
+- x axis scale: linear
 
 
 ## Chart
@@ -163,6 +188,17 @@ Write code in R or python to create a chart like that shown at the beginning of 
 Make sure your axes are labeled (5 pts) and your chart has a title (5 pts).
 Include your plot in this document and make sure you have a figure caption that describes what someone should notice in the chart (5 pts)
 You may do this either by modifying the chunk options or by using `include=F` and manually including the picture with a caption.
+
+```{r}
+ggplot(chart_data, aes(x=election_date, y=))+
+  geom_line()+
+  theme_bw()+
+  scale_y_continuous(trans='log2')+
+  ggtitle("No. of Polling Places in New Jersey Counties by Election.") +
+  xlab("Election Date")+
+  ylab("No. of Polling Places per County") 
+
+```
 
 ## Modifications
 
@@ -203,14 +239,32 @@ Write out the steps your function will need to accomplish in plain language.
 Write a function, `address_parser`, which can handle a single address and return a data structure containing each piece of the address, with NAs for pieces which are not matched.
 
 (change this chunk to python if you'd prefer to use python over R for this task)
-```{r single-address-parser}
-
+```{python single-address-parser}
+def address_parser(address):
+  building_number = None
+  street = None
+  city = None
+  state = None
+  zip_code = None
+  
+  address_split = address.split(',')
+  
+  if len(address_split[-1])== 8 or len(address_split[-1])==13:
+    
+  
+      
+  return
+    
+    #Check for zip
+    
+    
+    #chekc for building num
 ```
 
 
 This chunk will test your function on the addresses provided as examples. 
 (change this chunk to python if you used python above)
-```{r single-address-parser-test, error = T}
+```{python single-address-parser-test, error = T}
 address_parser("Tatitlek, AK 99677")
 address_parser("First Street, Cordova, AK 99574")
 address_parser("105 ICE ST, MENASHA, WI 54952-3223")
