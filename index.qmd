@@ -48,13 +48,13 @@ election_date,state,county_name,jurisdiction,jurisdiction_type,precinct_id,preci
 A comma ,
 
 2.  What is the header? (1 pt)    
-<Delete this and replace with your answer>
+the names of all the columns: election_date,state,county_name,jurisdiction,jurisdiction_type,precinct_id,precinct_name,polling_place_id,location_type,name,address,notes,source,source_date,source_notes
 
 3.  How many columns will the data have when it is read in using R or Python? (1 pt)    
 15
 
 4.  How is the data stored differently in the address field compared to the name field (1 pt), and why is this different handling necessary (1 pt)?    
-<Delete this and replace with your answer>
+The name usually doesn't have commas, but address field sometimes does contain commas.(which is the delimiter of this file)So, you need to put quotations around the address to make sure when you try reading the address data it doesn't split up the address into multiple components and mess everything up. Without commas, the name column doesnt need the quotations. 
 
 ## Reading the Data
 
@@ -74,7 +74,7 @@ data = pd.read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesda
 
 Using any method you choose from either language, fill in the following table.
 
-Language used: <Fill in>
+Language used: python and r
 
 Make sure your terms match the language you're using and the code you provided above. If you use code to get these values (which is probably a good idea), please use the code chunks provided here:
 
@@ -138,12 +138,17 @@ Fill in the following table when you are finished.
 Add new rows by moving to a new line, and separate each cell in the table with ` | ` (spaces matter). `|` is on the key above the enter key and shares a key with `\` (backslash). You will need to hold shift down.
 
 Step # | Verb | Arguments
---- | --    - | ---
+
  1 | filter   | data$state
+ 
  2 | filter   | NJ_data$name
+ 
  3 | filter   | NJ_data$name
+ 
  4 | gsub     | NJ_data$precinct_name
+ 
  5 | group_by | NJ_data$county_name
+ 
  6 | count    | NJ_data$election_date
 
 ## Code 
@@ -159,7 +164,8 @@ NJ_data <- NJ_data %>% filter(name != "DO NOT USE")
 
 NJ_data$county_name <- gsub("\\-.*",'', NJ_data$precinct_name) 
 
-#NJ_data <- NJ_data %>% group_by(election_date) #%>% group_by(election_date) %>% mutate(ppc=n())
+
+#create data for chart
 chart_data <- NJ_data %>% group_by(county_name) %>% count(election_date)
 
 
@@ -190,10 +196,12 @@ Include your plot in this document and make sure you have a figure caption that 
 You may do this either by modifying the chunk options or by using `include=F` and manually including the picture with a caption.
 
 ```{r}
-ggplot(chart_data, aes(x=election_date, y=))+
+
+#chart
+ggplot(chart_data, aes(x=election_date, y=n, group = county_name ))+
   geom_line()+
   theme_bw()+
-  scale_y_continuous(trans='log2')+
+  scale_y_continuous(trans='log2')+     
   ggtitle("No. of Polling Places in New Jersey Counties by Election.") +
   xlab("Election Date")+
   ylab("No. of Polling Places per County") 
@@ -204,8 +212,11 @@ ggplot(chart_data, aes(x=election_date, y=))+
 
 Evaluate the chart you created for comprehensibility and accessibility. (1 pt)
 
+My chart is not very comprehensible. NJ has something like 5000-6000 precincts, in which visually distinguishing between each would be very challenging. The scale of the graph makes it slightly more readable, but the sheer number of counties represented on the graph makes it hard to understand. 
+
 What modifications might you add to this chart to make it clearer and more understandable? (2 pts)
 
+The first thing that comes to mind is to highlight specific precincts with color so we can see some individual patterns. A legend describing each color would be added as well to determine which color is which line. I would also consider making the criteria I am graphing be more strict, to show less lines on one graph. (such as northern counties in NJ, counties surrounding NYC, or rural counties.)
 
 
 # Data Processing
@@ -248,17 +259,61 @@ def address_parser(address):
   zip_code = None
   
   address_split = address.split(',')
+
+
+  #Zip code and State
+  if len(address_split[-1])==9:
+      zip_and_state = address_split[-1].split(' ')
+      zip_code = zip_and_state[2]
+      state = zip_and_state[1]
+      address_split.pop()
+
+  elif len(address_split[-1])==14:
+      zip_and_state = address_split[-1].split(' ')
+      zip_code = zip_and_state[2]
+      state = zip_and_state[1]
+      address_split.pop()
   
-  if len(address_split[-1])== 8 or len(address_split[-1])==13:
-    
+  #city
+  city = address_split[-1]
+  address_split.pop()
+
   
-      
-  return
+  #building number/street address
+  for i in address_split:
     
-    #Check for zip
+    #checking for a building number
+    if i.isalpha() == False:
+      street_address = i.split(' ')
+      #finds the building number in the street address.
+      for j in street_address:
+        if j.isdigit()==True:
+          building_number = j
+          
+          #removes building number from street address
+          street_address.remove(j)
+          #sets street to rest of street address
+          street= ' '.join(street_address)
+
+          break
+        
+      #sets street address when there is no apparent building number.
+      street = ' '.join(street_address)
+
+  
     
+
+  
+  return pd.Series({
+      'Building Number': building_number,
+      'Street': street,
+      'City': city,
+      'State': state,
+      'Zip Code': zip_code
+})
+
     
-    #chekc for building num
+
 ```
 
 
@@ -281,7 +336,75 @@ address_parser("COMMUNITY CENTER, 1168 HWY 84, SILAS, AL 36919")
 Write a function, `address_vec`, which can parse a vector of addresses and return a data frame with columns corresponding to each piece of the address.
 
 (change this chunk to python if you'd prefer to use python over R for this task)
-```{r vector-address-parser}
+```{python vector-address-parser}
+def address_vec(vectorized_addresses):
+  address_frame = pd.DataFrame(columns =['Building Number', 'Street', 'City', 'State', 'Zip Code'])
+    
+  for address in vectorized_addresses:
+    building_number = None
+    street = None
+    city = None
+    state = None
+    zip_code = None
+  
+    address_split = address.split(',')
+    
+
+
+    #Zip code and State
+    if len(address_split[-1])==9:
+        zip_and_state = address_split[-1].split(' ')
+        zip_code = zip_and_state[2]
+        state = zip_and_state[1]
+        address_split.pop()
+
+    elif len(address_split[-1])==14:
+        zip_and_state = address_split[-1].split(' ')
+        zip_code = zip_and_state[2]
+        state = zip_and_state[1]
+        address_split.pop()
+  
+    #city
+    city = address_split[-1]
+    address_split.pop()
+
+  
+    #building number/street address
+    for i in address_split:
+      
+      #checking for a building number
+      if i.isalpha() == False:
+        street_address = i.split(' ')
+        #finds the building number in the street address.
+        for j in street_address:
+          if j.isdigit()==True:
+            building_number = j
+            
+            #removes building number from street address
+            street_address.remove(j)
+            #sets street to rest of street address
+            street= ' '.join(street_address)
+
+            break
+        
+        #sets street address when there is no apparent building number.
+        street = ' '.join(street_address)
+    
+    
+    
+    
+    
+    address_series = pd.Series({
+            'Building Number': building_number,
+            'Street': street,
+            'City': city,
+            'State': state,
+            'Zip Code': zip_code
+            })
+    address_frame = address_frame._append(address_series, ignore_index = True)
+  return address_frame
+
+  
 
 ```
 
@@ -302,8 +425,13 @@ address_vec(test_vec)
 Use your function to parse a vector of the unique polling place addresses in your state, creating a data table of address components for your letters.
 (5 pts)
 
-```{r r-function-eval}
+```{python r-function-eval}
+NJ_data = data[data['state']=='NJ']
+NJ_addresses = NJ_data['address'].values.tolist()
+address_vec(NJ_addresses)
 
 ```
 
 Where did your function have issues, if it did? (5 pts)
+
+My function relies entirely on commas separating different elements of the address. Alaska had nice and relatively consistent comma use so I could use that to my benefit when making the parsing function, but when used on states without commas (NJ, and many others) it's completely useless. For a state like NJ where a space separates every value I could change the function to initially separate by each space and parse from there. I made my function to primarily be flexible with the amount of information in the address, like Alaska where there might be missing information, and to be able to work around it getting the rest of it correct. 
